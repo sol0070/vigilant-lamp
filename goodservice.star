@@ -3,7 +3,7 @@ Applet: Goodservice
 Summary: Goodservice NYC subway
 Description: Projected New York City subway departure times, powered by goodservice.io.
 Author: blahblahblah-
-"""
+""""""
 
 load("encoding/base64.star", "base64")
 load("encoding/json.star", "json")
