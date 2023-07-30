@@ -1,3 +1,6 @@
+Apps created by Solly Lin
+
+Apps written in Starlark - used for pxiel based displays. Starlark is a 'dialect' of python
 # American Flag
 This app shows the american flag statically drawn. 
 
