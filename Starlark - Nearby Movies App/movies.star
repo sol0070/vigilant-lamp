@@ -20,7 +20,7 @@ DEFAULT_RADIUS = "10"
 
 
 HEADERS = {
-	"X-RapidAPI-Key": "redacted",
+	"X-RapidAPI-Key": "895301f7c7mshd0d2bdc3a7fa77dp15526cjsn6646e379a79f",
 	"X-RapidAPI-Host": "flixster.p.rapidapi.com"
 }
 
