@@ -1,5 +1,5 @@
 """
-Applet: AirNowAQI
+Applet: movieslist
 Summary: Air Now AQI
 Description: Displays the current AQI value and level by location using data provided by AirNow.gov.
 Author: Solomon Lin
@@ -24,11 +24,7 @@ HEADERS = {
 	"X-RapidAPI-Host": "flixster.p.rapidapi.com"
 }
 
-
-posterImageUrl = "https://m.media-amazon.com/images/I/81F5PF9oHhL._AC_SL1500_.jpg"
-
 THEATERS_DETAIL_URL = "https://flixster.p.rapidapi.com/theaters/detail"
-
 
 def main(config):
     font = config.get("font", "tom-thumb")
@@ -38,9 +34,12 @@ def main(config):
     QUERY_STRING_LIST = {"zipCode":zipcode_raw,"radius":radius_raw}
     theater_list_response = http.get(THEATERS_LIST_URL, headers=HEADERS, params=QUERY_STRING_LIST)
     
+    theater_list_size = len(theater_list_response.json()['data']['theaters'])
+    chosen_theater_num = random.number(0, theater_list_size - 1)
+    
     #first movie theater
-    theater_id= theater_list_response.json()['data']['theaters'][0]['id']
-    theater_name = theater_list_response.json()['data']['theaters'][0]['name']
+    theater_id = theater_list_response.json()['data']['theaters'][chosen_theater_num]['id']
+    theater_name = theater_list_response.json()['data']['theaters'][chosen_theater_num]['name']
     
     
     QUERY_STRING_DETAIL = {
@@ -48,31 +47,34 @@ def main(config):
     }
     
     theater_detail_response = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
-    
-    
-
-
-    poster_url = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][0]['posterImage']['url']
-    
-    
-    title = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][0]['name']
-    motionpicture_rating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][0]['motionPictureRating']['code']
-    movie_duration = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][0]['durationMinutes']
-    print(movie_duration)
-    tomatoRating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][0]['tomatoRating']['tomatometer']
+    movie_list_size = len(theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'])
+    print(movie_list_size)
+    chosen_movie = random.number(0, movie_list_size)
+   
+    #select movie at chosen theater
+    poster_url = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
+    title = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
+    motionpicture_rating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
+    movie_duration = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
+    tomatoRating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
+    ratingImage = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
     
 
     return render.Root(
         child = render.Row(
+            
             expanded = True,
             main_align = "start",
             cross_align = "start",
             children = [
-             render.Image(
+                render.Padding(
+                    pad = (0, 0, 1, 0),
+                    child = render.Image(
                         src = http.get(poster_url).body(),
                         width = 24,
                         height = 32,
-                    ),                     
+                        ),          
+                ),
                  render.Column(
                  main_align = "space_between",
                  children = [
@@ -82,7 +84,7 @@ def main(config):
                     ),
                      
                     render.Box(
-                    width = 40,
+                    width = 38,
                     height = 1,
                     color = "#78DECC",
                     ),
@@ -96,11 +98,16 @@ def main(config):
                         width = 40,
                         child = render.Text(str(int(movie_duration)) + " mins", font = font),
                     ),
-                    
+
                     render.Marquee(
                         width = 40,
                         child = render.Text(str(int(tomatoRating)) + "%", font = font),
                     ),
+                        render.Image(
+                            src = http.get(ratingImage).body(),
+                            width = 6,
+                            height = 5,
+                        )
                     ]
                          
                     ),
