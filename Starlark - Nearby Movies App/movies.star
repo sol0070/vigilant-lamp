@@ -11,13 +11,14 @@ load("encoding/base64.star", "base64")
 load("cache.star", "cache")
 load("random.star", "random")
 load("schema.star", "schema")
+load("animation.star", "animation")
 
 
 THEATERS_LIST_URL = "https://flixster.p.rapidapi.com/theaters/list"
 DEFAULT_ZIPCODE = "90002"
 DEFAULT_RADIUS = "10"
 
-
+question_mark_url = "https://upload.wikimedia.org/wikipedia/commons/2/25/Icon-round-Question_mark.jpg"
 
 HEADERS = {
 	"X-RapidAPI-Key": "895301f7c7mshd0d2bdc3a7fa77dp15526cjsn6646e379a79f",
@@ -48,29 +49,75 @@ def main(config):
     
     theater_detail_response = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
     movie_list_size = len(theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'])
-    print(movie_list_size)
-    chosen_movie = random.number(0, movie_list_size)
+    print("movie list size is: " + str(movie_list_size))
+    if movie_list_size < 1:
+        chosen_movie = 0
+        poster_url = question_mark_url
+        title = "?"
+        motionpicture_rating = "?"
+        movie_duration = "?"
+        tomatoRating = "?"
+        ratingImage = question_mark_url
+    else:
+        chosen_movie = random.number(0, movie_list_size - 1)
+        #select movie at chosen theater
+        poster_url = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
+        title = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
+        motionpicture_rating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
+        movie_duration = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
+        tomatoRating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
+        ratingImage = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
    
-    #select movie at chosen theater
-    poster_url = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
-    title = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
-    motionpicture_rating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
-    movie_duration = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
-    tomatoRating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
-    ratingImage = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
+
     
 
     return render.Root(
-        child = render.Row(
-            
+        child = render.Sequence(
+            children = [
+                animation.Transformation( 
+                     duration = 150,
+                     delay = 0,
+                     keyframes = animate_keyframes(),
+                     child = render.Column(
+                        expanded = True,
+                        main_align = "start",
+                        children = [
+                            render1(font, poster_url, title, motionpicture_rating, movie_duration, tomatoRating, ratingImage),
+                        ]
+                     ),
+                 ),
+             ]
+         )
+    )
+       
+def render1(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatorating_in, ratingimage_in):
+    return render.Row(
             expanded = True,
             main_align = "start",
             cross_align = "start",
             children = [
+                # render.Column(
+                    # main_align = "space_between",
+                 # children = [
+                    # render.Marquee(
+                    # width = 40,
+                    # child = render.Text(title_in, font = "tb-8"),
+                    # ),
+                    # render.Box(
+                    # width = 38,
+                    # height = 1,
+                    # color = "#78DECC",
+                    # ),
+                    # render.Marquee(
+                    # width = 40,
+                    # child = render.Text("Playing At: ", font = "tb-8"),
+                    # ),
+                # ],
+                 # ),  
                 render.Padding(
                     pad = (0, 0, 1, 0),
                     child = render.Image(
-                        src = http.get(poster_url).body(),
+                        src = http.get(poster_url_in).body(),
                         width = 24,
                         height = 32,
                         ),          
@@ -80,7 +127,7 @@ def main(config):
                  children = [
                     render.Marquee(
                     width = 40,
-                    child = render.Text(title, font = "tb-8"),
+                    child = render.Text(title_in, font = "tb-8"),
                     ),
                      
                     render.Box(
@@ -89,34 +136,53 @@ def main(config):
                     color = "#78DECC",
                     ),
                     
-                    render.Marquee(
+                    render.Box(
                         width = 40,
-                        child = render.Text(motionpicture_rating, font = font),
+                        height = 7,
+                        child = render.Text(mprating_in, font = font_in),
                     ),
 
-                    render.Marquee(
+                    render.Box(
                         width = 40,
-                        child = render.Text(str(int(movie_duration)) + " mins", font = font),
+                        height = 7,
+                        child = render.Text(str(int(duration_in)) + " mins", font = font_in),
                     ),
-
-                    render.Marquee(
-                        width = 40,
-                        child = render.Text(str(int(tomatoRating)) + "%", font = font),
-                    ),
-                        render.Image(
-                            src = http.get(ratingImage).body(),
-                            width = 6,
-                            height = 5,
-                        )
-                    ]
-                         
-                    ),
-                        
+                    
+                    render.Row(
+                        expanded = True,
+                        main_align = "center",
+                        cross_align = "center",
+                        children = [
+                            render.Box(
+                                width = 15,
+                                height = 7,
+                                child = render.Text(str(int(tomatorating_in)) + "%", font = font_in),
+                            ),
+                            render.Image(
+                                src = http.get(ratingimage_in).body(),
+                                width = 7,
+                                height = 6,
+                            )
+                        ]
+                    )
+                    ] 
+                    ),     
             ]
-        
         )
-        )
-            
+       
+def animate_keyframes():
+    return [
+        animation.Keyframe(
+            percentage = 0.0,
+            transforms = [animation.Translate(x = -0, y = 0)],
+        ),
+        animation.Keyframe(
+            percentage = 1.0,
+            transforms = [animation.Translate(x = 0, y = 0)],
+        ),
+    ]
+       
+       
 def get_schema():
     return schema.Schema(
         version = "1",
