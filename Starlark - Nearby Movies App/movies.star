@@ -1,7 +1,7 @@
 """
 Applet: movieslist
-Summary: Air Now AQI
-Description: Displays the current AQI value and level by location using data provided by AirNow.gov.
+Summary: Show A Nearby Movie
+Description: Chooses from a list of nearby theaters, then displays a movie from that theater
 Author: Solomon Lin
 """
 load("encoding/json.star", "json")
@@ -41,6 +41,7 @@ def main(config):
     #first movie theater
     theater_id = theater_list_response.json()['data']['theaters'][chosen_theater_num]['id']
     theater_name = theater_list_response.json()['data']['theaters'][chosen_theater_num]['name']
+    theater_distance = theater_list_response.json()['data']['theaters'][chosen_theater_num]['distance']
     
     
     QUERY_STRING_DETAIL = {
@@ -55,8 +56,8 @@ def main(config):
         poster_url = question_mark_url
         title = "?"
         motionpicture_rating = "?"
-        movie_duration = "?"
-        tomatoRating = "?"
+        movie_duration = 0
+        tomatoRating = 0
         ratingImage = question_mark_url
     else:
         chosen_movie = random.number(0, movie_list_size - 1)
@@ -69,52 +70,63 @@ def main(config):
         ratingImage = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
    
 
-    
-
     return render.Root(
-        child = render.Sequence(
+        child = render.Stack(
             children = [
+                render_bottom(font, title, theater_name, theater_distance),
                 animation.Transformation( 
-                     duration = 150,
+                     duration = 200,
                      delay = 0,
                      keyframes = animate_keyframes(),
-                     child = render.Column(
-                        expanded = True,
-                        main_align = "start",
-                        children = [
-                            render1(font, poster_url, title, motionpicture_rating, movie_duration, tomatoRating, ratingImage),
-                        ]
+                     child = render_top(font, poster_url, title, motionpicture_rating, movie_duration, tomatoRating, ratingImage),
+  
                      ),
-                 ),
+                
              ]
-         )
+        ) 
     )
+
+def render_bottom(font_in, title_in, theater_name_in, theater_distance_in):
+     return render.Column(
+         main_align = "space_between",
+         children = [
+            render.Marquee(
+            width = 40,
+            height = 7,
+            child = render.Text(title_in, font = "tb-8"),
+            ),            
+            render.Box(
+            width = 38,
+            height = 1,
+            color = "#78DECC",
+            ),
+            render.Box(
+                width = 40,
+                height = 7,
+                child = render.Text("Showing At: ", font = "tom-thumb"),
+            ),
+            render.Marquee(
+                width = 40,
+                child = render.Text(theater_name_in, font = font_in),
+            ),
+            render.Box(
+                width = 40,
+                height = 7,
+                child = render.Text(str(int(theater_distance_in)) + " mi", font = font_in),
+            ),
+        ]
+     )
+                
        
-def render1(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatorating_in, ratingimage_in):
+def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatorating_in, ratingimage_in):
     return render.Row(
             expanded = True,
             main_align = "start",
             cross_align = "start",
             children = [
-                # render.Column(
-                    # main_align = "space_between",
-                 # children = [
-                    # render.Marquee(
-                    # width = 40,
-                    # child = render.Text(title_in, font = "tb-8"),
-                    # ),
-                    # render.Box(
-                    # width = 38,
-                    # height = 1,
-                    # color = "#78DECC",
-                    # ),
-                    # render.Marquee(
-                    # width = 40,
-                    # child = render.Text("Playing At: ", font = "tb-8"),
-                    # ),
-                # ],
-                 # ),  
+
                 render.Padding(
+                    color = "000",
                     pad = (0, 0, 1, 0),
                     child = render.Image(
                         src = http.get(poster_url_in).body(),
@@ -122,32 +134,32 @@ def render1(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatora
                         height = 32,
                         ),          
                 ),
-                 render.Column(
+                 render.Box(
+                 width = 40,
+                 height = 32,
+                 color = "000",
+                 child = render.Column(
                  main_align = "space_between",
                  children = [
                     render.Marquee(
                     width = 40,
                     child = render.Text(title_in, font = "tb-8"),
                     ),
-                     
                     render.Box(
                     width = 38,
                     height = 1,
                     color = "#78DECC",
                     ),
-                    
                     render.Box(
                         width = 40,
                         height = 7,
                         child = render.Text(mprating_in, font = font_in),
                     ),
-
                     render.Box(
                         width = 40,
                         height = 7,
                         child = render.Text(str(int(duration_in)) + " mins", font = font_in),
-                    ),
-                    
+                    ),  
                     render.Row(
                         expanded = True,
                         main_align = "center",
@@ -166,7 +178,9 @@ def render1(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatora
                         ]
                     )
                     ] 
-                    ),     
+                    ),  
+                 
+                 )
             ]
         )
        
@@ -174,11 +188,19 @@ def animate_keyframes():
     return [
         animation.Keyframe(
             percentage = 0.0,
-            transforms = [animation.Translate(x = -0, y = 0)],
+            transforms = [animation.Translate(x = 0, y = 0)],
+        ),
+        animation.Keyframe(
+            percentage = 0.5,
+            transforms = [animation.Translate(x = 0, y = 0)],
+        ),
+        animation.Keyframe(
+            percentage = 0.55,
+            transforms = [animation.Translate(x = 40, y = 0)],
         ),
         animation.Keyframe(
             percentage = 1.0,
-            transforms = [animation.Translate(x = 0, y = 0)],
+            transforms = [animation.Translate(x = 40, y = 0)],
         ),
     ]
        
