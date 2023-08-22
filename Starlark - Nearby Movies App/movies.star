@@ -14,18 +14,18 @@ load("schema.star", "schema")
 load("animation.star", "animation")
 
 
-THEATERS_LIST_URL = "https://flixster.p.rapidapi.com/theaters/list"
+TheatersListUrl = "https://flixster.p.rapidapi.com/theaters/list"
 DEFAULT_ZIPCODE = "90002"
 DEFAULT_RADIUS = "10"
 
-question_mark_url = "https://upload.wikimedia.org/wikipedia/commons/2/25/Icon-round-Question_mark.jpg"
+questionMarkUrl = "https://upload.wikimedia.org/wikipedia/commons/2/25/Icon-round-Question_mark.jpg"
 
 HEADERS = {
 	"X-RapidAPI-Key": "895301f7c7mshd0d2bdc3a7fa77dp15526cjsn6646e379a79f",
 	"X-RapidAPI-Host": "flixster.p.rapidapi.com"
 }
 
-THEATERS_DETAIL_URL = "https://flixster.p.rapidapi.com/theaters/detail"
+TheatersDetailUrl = "https://flixster.p.rapidapi.com/theaters/detail"
 
 def main(config):
     font = config.get("font", "tom-thumb")
@@ -33,43 +33,70 @@ def main(config):
     
     radius_raw = config.str("radius", DEFAULT_RADIUS)
     QUERY_STRING_LIST = {"zipCode":zipcode_raw,"radius":radius_raw}
-    theater_list_response = http.get(THEATERS_LIST_URL, headers=HEADERS, params=QUERY_STRING_LIST)
     
-    theater_list_size = len(theater_list_response.json()['data']['theaters'])
-    chosen_theater_num = random.number(0, theater_list_size - 1)
+    theater_list_response = http.get(TheatersListUrl, headers=HEADERS, params=QUERY_STRING_LIST)
     
-    #first movie theater
-    theater_id = theater_list_response.json()['data']['theaters'][chosen_theater_num]['id']
-    theater_name = theater_list_response.json()['data']['theaters'][chosen_theater_num]['name']
-    theater_distance = theater_list_response.json()['data']['theaters'][chosen_theater_num]['distance']
+   
+
+    
+    #print(theater_list_response.status_code)
+    
+    theaterListSize = len(theater_list_response.json()['data']['theaters'])
+    chosenTheaterNum = random.number(0, theaterListSize - 1)
+    
+    if theaterListSize < 1:
+        theater_id = 0
+        theater_name = "?"
+        theater_distance = 0
+    else:
+        theater_id = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['id']
+        theater_name = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['name']
+        theater_distance = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['distance']
     
     
     QUERY_STRING_DETAIL = {
         "id": theater_id,
     }
     
-    theater_detail_response = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
-    movie_list_size = len(theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'])
-    print("movie list size is: " + str(movie_list_size))
+    theaterDetailResponse = http.get(TheatersDetailUrl, headers=HEADERS, params=QUERY_STRING_DETAIL)
+    movie_list_size = len(theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'])
     if movie_list_size < 1:
         chosen_movie = 0
-        poster_url = question_mark_url
+        poster_url = questionMarkUrl
         title = "?"
         motionpicture_rating = "?"
         movie_duration = 0
         tomatoRating = 0
-        ratingImage = question_mark_url
+        ratingImage = questionMarkUrl
     else:
         chosen_movie = random.number(0, movie_list_size - 1)
         #select movie at chosen theater
-        poster_url = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
-        title = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
-        motionpicture_rating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
-        movie_duration = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
-        tomatoRating = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
-        ratingImage = theater_detail_response.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
-   
+        poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
+        title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
+        motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
+        movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
+        tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
+        ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
+        
+    if title == None:
+        print("title is none")
+        title = "N/A"
+    if motionpicture_rating == None:
+        print("mp None")
+        motionpicture_rating = "N/A"
+    if movie_duration == None:
+        print("duration None")
+        movie_duration = "N/A"
+    if tomatoRating == None:
+        print("tomato None")
+        tomatoRating = "N/A"
+    if ratingImage == None:
+        print("image none")
+        ratingImage = questionMarkUrl
+        
 
+        
+        
     return render.Root(
         child = render.Stack(
             children = [
@@ -86,33 +113,35 @@ def main(config):
         ) 
     )
 
-def render_bottom(font_in, title_in, theater_name_in, theater_distance_in):
+
+    
+
+def render_bottom(font_in, title_in, theaterNameRow1, theaterDistanceIn):
      return render.Column(
          main_align = "space_between",
+         #expanded = True,
          children = [
             render.Marquee(
-            width = 40,
+            width = 38,
             height = 7,
             child = render.Text(title_in, font = "tb-8"),
             ),            
             render.Box(
-            width = 38,
+            width = 39,
             height = 1,
             color = "#78DECC",
             ),
-            render.Box(
-                width = 40,
-                height = 7,
-                child = render.Text("Showing At: ", font = "tom-thumb"),
-            ),
-            render.Marquee(
-                width = 40,
-                child = render.Text(theater_name_in, font = font_in),
+            render.WrappedText(
+            content= theaterNameRow1,
+            width=40,
+            linespacing = 0,
+            font = "tom-thumb", 
+            align = "center",
             ),
             render.Box(
                 width = 40,
                 height = 7,
-                child = render.Text(str(int(theater_distance_in)) + " mi", font = font_in),
+                child = render.Text(str(int(theaterDistanceIn)) + " mi", font = font_in),
             ),
         ]
      )
