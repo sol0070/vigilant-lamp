@@ -14,85 +14,94 @@ load("schema.star", "schema")
 load("animation.star", "animation")
 
 
-TheatersListUrl = "https://flixster.p.rapidapi.com/theaters/list"
+THEATERS_LIST_URL = "https://flixster.p.rapidapi.com/theaters/list"
 DEFAULT_ZIPCODE = "90002"
 DEFAULT_RADIUS = "10"
 
-questionMarkUrl = "https://upload.wikimedia.org/wikipedia/commons/2/25/Icon-round-Question_mark.jpg"
+QUESTION_MARK_URL = "https://upload.wikimedia.org/wikipedia/commons/2/25/Icon-round-Question_mark.jpg"
 
 HEADERS = {
 	"X-RapidAPI-Key": "895301f7c7mshd0d2bdc3a7fa77dp15526cjsn6646e379a79f",
 	"X-RapidAPI-Host": "flixster.p.rapidapi.com"
 }
 
-TheatersDetailUrl = "https://flixster.p.rapidapi.com/theaters/detail"
+THEATERS_DETAIL_URL = "https://flixster.p.rapidapi.com/theaters/detail"
 
 def main(config):
     font = config.get("font", "tom-thumb")
-    zipcode_raw = config.str("zipcode", DEFAULT_ZIPCODE)
+    zipCodeRaw = config.str("zipcode", DEFAULT_ZIPCODE)
     
     radius_raw = config.str("radius", DEFAULT_RADIUS)
-    QUERY_STRING_LIST = {"zipCode":zipcode_raw,"radius":radius_raw}
+    QUERY_STRING_LIST = {"zipCode":zipCodeRaw,"radius":radius_raw}
+    theaterListSize = 0
+    theaterListResponse = ""
+    theater_name = ""
+    theater_distance = 0
+    chosenTheaterNum = 0
     
-    theater_list_response = http.get(TheatersListUrl, headers=HEADERS, params=QUERY_STRING_LIST)
+    theaterListCached = cache.get("theater_list")
+    if theaterListCached != None:
+        print("displaying cached data")
+        theaterListSize = int(theaterListCached.split(",")[0])
+        theater_id = theaterListCached.split(",")[1]
+        theater_name = theaterListCached.split(",")[2]
+        theater_distance = theaterListCached.split(",")[3]
+        print("splitted: ", theater_distance)
+    else:
+        print("Miss, calling API")
+        theaterListResponse = http.get(THEATERS_LIST_URL, headers=HEADERS, params=QUERY_STRING_LIST) 
+        if theaterListResponse.status_code != 200:
+            fail("app failed with status %d", theaterListResponse.status_code)
+        theaterListSize = len(theaterListResponse.json()['data']['theaters'])
+        theater_id = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['id']
+        theater_name = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['name']
+        theater_distance = int(theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['distance'])
+        print(theaterListSize)
+        cache.set("theater_list", str(theaterListSize) + "," + str(theater_id) + "," + str(theater_name) + "," + str(theater_distance), ttl_seconds = 240)
     
-   
+    
+    print("cache set: ", cache.get("theater_list"))
+    chosenTheaterNum = random.number(0, theaterListSize - 1)
 
     
-    #print(theater_list_response.status_code)
-    
-    theaterListSize = len(theater_list_response.json()['data']['theaters'])
-    chosenTheaterNum = random.number(0, theaterListSize - 1)
-    
-    if theaterListSize < 1:
-        theater_id = 0
-        theater_name = "?"
-        theater_distance = 0
-    else:
-        theater_id = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['id']
-        theater_name = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['name']
-        theater_distance = theater_list_response.json()['data']['theaters'][chosenTheaterNum]['distance']
     
     
     QUERY_STRING_DETAIL = {
         "id": theater_id,
     }
     
-    theaterDetailResponse = http.get(TheatersDetailUrl, headers=HEADERS, params=QUERY_STRING_DETAIL)
+    theaterDetailResponse = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
     movie_list_size = len(theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'])
-    if movie_list_size < 1:
-        chosen_movie = 0
-        poster_url = questionMarkUrl
-        title = "?"
-        motionpicture_rating = "?"
-        movie_duration = 0
-        tomatoRating = 0
-        ratingImage = questionMarkUrl
+    if movie_list_size <= 1:
+        blank_graphic()
     else:
-        chosen_movie = random.number(0, movie_list_size - 1)
-        #select movie at chosen theater
-        poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
-        title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
-        motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
-        movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
-        tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
-        ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
+            chosen_movie = random.number(0, movie_list_size - 1)
+            #select movie at chosen theater
+            poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
+            title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
+            motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
+            movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
+            tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
+            ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
+
+
         
-    if title == None:
-        print("title is none")
-        title = "N/A"
-    if motionpicture_rating == None:
-        print("mp None")
-        motionpicture_rating = "N/A"
-    if movie_duration == None:
-        print("duration None")
-        movie_duration = "N/A"
-    if tomatoRating == None:
-        print("tomato None")
-        tomatoRating = "N/A"
-    if ratingImage == None:
-        print("image none")
-        ratingImage = questionMarkUrl
+        
+    # if title == None:
+        # print("title is none")
+        # title = "N/A"
+    # if motionpicture_rating == None:
+        # print("mp None")
+        # motionpicture_rating = "N/A"
+    # if movie_duration == None:
+        # print("duration None")
+        # movie_duration = "N/A"
+    # if tomatoRating == None:
+        # print("tomato None")
+        # tomatoRating = "N/A"
+    # if ratingImage == None:
+        # print("image none")
+        # ratingImage = QUESTION_MARK_URL
         
 
         
@@ -114,6 +123,15 @@ def main(config):
     )
 
 
+def blank_graphic():
+    print("default graphic function")
+    chosen_movie = 0
+    poster_url = QUESTION_MARK_URL
+    title = "?"
+    motionpicture_rating = "?"
+    movie_duration = 0
+    tomatoRating = 0
+    ratingImage = QUESTION_MARK_URL
     
 
 def render_bottom(font_in, title_in, theaterNameRow1, theaterDistanceIn):
@@ -212,6 +230,8 @@ def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomat
                  )
             ]
         )
+
+
        
 def animate_keyframes():
     return [
@@ -248,7 +268,7 @@ def get_schema():
                 id = "radius",
                 name = "radius",
                 desc = "Enter theater search radius",
-                icon = "bus",
+                icon = "key",
             ),
         ],
     )
