@@ -41,14 +41,12 @@ def main(config):
     
     theaterListCached = cache.get("theater_list")
     if theaterListCached != None:
-        print("displaying cached data")
         theaterListSize = int(theaterListCached.split(",")[0])
         theater_id = theaterListCached.split(",")[1]
         theater_name = theaterListCached.split(",")[2]
         theater_distance = theaterListCached.split(",")[3]
-        print("splitted: ", theater_distance)
+
     else:
-        print("Miss, calling API")
         theaterListResponse = http.get(THEATERS_LIST_URL, headers=HEADERS, params=QUERY_STRING_LIST) 
         if theaterListResponse.status_code != 200:
             fail("app failed with status %d", theaterListResponse.status_code)
@@ -56,56 +54,39 @@ def main(config):
         theater_id = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['id']
         theater_name = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['name']
         theater_distance = int(theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['distance'])
-        print(theaterListSize)
         cache.set("theater_list", str(theaterListSize) + "," + str(theater_id) + "," + str(theater_name) + "," + str(theater_distance), ttl_seconds = 240)
     
-    
-    print("cache set: ", cache.get("theater_list"))
     chosenTheaterNum = random.number(0, theaterListSize - 1)
-
-    
-    
-    
     QUERY_STRING_DETAIL = {
         "id": theater_id,
     }
     
-    theaterDetailResponse = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
-    movie_list_size = len(theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'])
-    if movie_list_size <= 1:
-        blank_graphic()
+    theaterDetailCached = cache.get("theater_detail")
+    if theaterDetailCached != None:
+        print("displaying cached data")
+        poster_url = theaterDetailCached.split(",")[0]
+        title = theaterDetailCached.split(",")[1]
+        motionpicture_rating = theaterDetailCached.split(",")[2]
+        movie_duration = theaterDetailCached.split(",")[3]
+        tomatoRating = theaterDetailCached.split(",")[4]
+        ratingImage = theaterDetailCached.split(",")[5]
     else:
-            chosen_movie = random.number(0, movie_list_size - 1)
-            #select movie at chosen theater
-            poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
-            title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
-            motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
-            movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
-            tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
-            ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
-
-
-        
-        
-    # if title == None:
-        # print("title is none")
-        # title = "N/A"
-    # if motionpicture_rating == None:
-        # print("mp None")
-        # motionpicture_rating = "N/A"
-    # if movie_duration == None:
-        # print("duration None")
-        # movie_duration = "N/A"
-    # if tomatoRating == None:
-        # print("tomato None")
-        # tomatoRating = "N/A"
-    # if ratingImage == None:
-        # print("image none")
-        # ratingImage = QUESTION_MARK_URL
-        
-
-        
-        
+        print("Miss, calling API")
+        theaterDetailResponse = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
+        if theaterDetailResponse.status_code != 200:
+            fail("app failed with status %d", theaterDetailResponse.status_code)
+            #blank_graphic()
+        movieListSize = len(theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'])
+        chosen_movie = random.number(0, movieListSize - 1)
+        #select movie at chosen theater
+        poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
+        title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
+        motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
+        movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
+        tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
+        ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
+        cache.set("theater_detail", str(poster_url) + "," + str(title) + "," + str(motionpicture_rating) + "," + str(int(movie_duration)) + "," + str(int(tomatoRating)) + "," + str(ratingImage), ttl_seconds = 240)
+      
     return render.Root(
         child = render.Stack(
             children = [
@@ -205,7 +186,7 @@ def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomat
                     render.Box(
                         width = 40,
                         height = 7,
-                        child = render.Text(str(int(duration_in)) + " mins", font = font_in),
+                        child = render.Text(str(duration_in) + " mins", font = font_in),
                     ),  
                     render.Row(
                         expanded = True,
@@ -215,7 +196,7 @@ def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomat
                             render.Box(
                                 width = 15,
                                 height = 7,
-                                child = render.Text(str(int(tomatorating_in)) + "%", font = font_in),
+                                child = render.Text(str(tomatorating_in) + "%", font = font_in),
                             ),
                             render.Image(
                                 src = http.get(ratingimage_in).body(),
