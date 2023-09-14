@@ -1,4 +1,8 @@
-Apps created by Solly Lin
+App created by Solly Lin
+
+# Sample Animation
+
+![Oppenheimer Movie Near User](OPPENHEIMER.webp)
 
 App written in Starlark - used for pxiel based displays. Starlark is a 'dialect' of python
 # Nearby Movies
