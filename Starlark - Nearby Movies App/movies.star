@@ -1,7 +1,7 @@
 """
 Applet: movieslist
 Summary: Show A Nearby Movie
-Description: Chooses from a list of nearby theaters, then displays a movie from that theater
+Description: Shows a random movie from a nearby theater
 Author: Solomon Lin
 """
 load("encoding/json.star", "json")
@@ -13,7 +13,7 @@ load("random.star", "random")
 load("schema.star", "schema")
 load("animation.star", "animation")
 
-
+#use flixter's movie api on rapidapi hub. requires a membership for api key
 THEATERS_LIST_URL = "https://flixster.p.rapidapi.com/theaters/list"
 DEFAULT_ZIPCODE = "90002"
 DEFAULT_RADIUS = "10"
@@ -30,92 +30,94 @@ THEATERS_DETAIL_URL = "https://flixster.p.rapidapi.com/theaters/detail"
 def main(config):
     font = config.get("font", "tom-thumb")
     zipCodeRaw = config.str("zipcode", DEFAULT_ZIPCODE)
-    
-    radius_raw = config.str("radius", DEFAULT_RADIUS)
-    QUERY_STRING_LIST = {"zipCode":zipCodeRaw,"radius":radius_raw}
+    radiusRaw = config.str("radius", DEFAULT_RADIUS)
+    QUERY_STRING_LIST = {"zipCode":zipCodeRaw,"radius":radiusRaw}
     theaterListSize = 0
     theaterListResponse = ""
-    theater_name = ""
-    theater_distance = 0
+    theaterName = ""
+    theaterDistance = 0
     chosenTheaterNum = 0
     
+    #create cache for list of nearby theaters api call
     theaterListCached = cache.get("theater_list")
     if theaterListCached != None:
         theaterListSize = int(theaterListCached.split(",")[0])
-        theater_id = theaterListCached.split(",")[1]
-        theater_name = theaterListCached.split(",")[2]
-        theater_distance = theaterListCached.split(",")[3]
-
+        theaterId = theaterListCached.split(",")[1]
+        theaterName = theaterListCached.split(",")[2]
+        theaterDistance = theaterListCached.split(",")[3]
     else:
         theaterListResponse = http.get(THEATERS_LIST_URL, headers=HEADERS, params=QUERY_STRING_LIST) 
         if theaterListResponse.status_code != 200:
             fail("app failed with status %d", theaterListResponse.status_code)
+            BlankGraphic()
+        #index json object
         theaterListSize = len(theaterListResponse.json()['data']['theaters'])
-        theater_id = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['id']
-        theater_name = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['name']
-        theater_distance = int(theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['distance'])
-        cache.set("theater_list", str(theaterListSize) + "," + str(theater_id) + "," + str(theater_name) + "," + str(theater_distance), ttl_seconds = 240)
-    
+        theaterId = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['id']
+        theaterName = theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['name']
+        theaterDistance = int(theaterListResponse.json()['data']['theaters'][chosenTheaterNum]['distance'])
+        #concat items into string for cache and parse later
+        cache.set("theater_list", str(theaterListSize) + "," + str(theaterId) + "," + str(theaterName) + "," + str(theaterDistance), ttl_seconds = 240)
+    #choose a random movie theater ID from the list of nearby theaters given radius and zip code
     chosenTheaterNum = random.number(0, theaterListSize - 1)
+    print("chosentheaternum: ", chosenTheaterNum)
     QUERY_STRING_DETAIL = {
-        "id": theater_id,
+        "id": theaterId,
     }
     
+    #create cache for chosen theater's details api call
     theaterDetailCached = cache.get("theater_detail")
     if theaterDetailCached != None:
-        print("displaying cached data")
-        poster_url = theaterDetailCached.split(",")[0]
+        posterUrl = theaterDetailCached.split(",")[0]
         title = theaterDetailCached.split(",")[1]
-        motionpicture_rating = theaterDetailCached.split(",")[2]
-        movie_duration = theaterDetailCached.split(",")[3]
+        motionPictureRating = theaterDetailCached.split(",")[2]
+        movieDuration = theaterDetailCached.split(",")[3]
         tomatoRating = theaterDetailCached.split(",")[4]
         ratingImage = theaterDetailCached.split(",")[5]
     else:
-        print("Miss, calling API")
         theaterDetailResponse = http.get(THEATERS_DETAIL_URL, headers=HEADERS, params=QUERY_STRING_DETAIL)
         if theaterDetailResponse.status_code != 200:
             fail("app failed with status %d", theaterDetailResponse.status_code)
-            #blank_graphic()
+            BlankGraphic()
         movieListSize = len(theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'])
-        chosen_movie = random.number(0, movieListSize - 1)
         #select movie at chosen theater
-        poster_url = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['posterImage']['url']
-        title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['name']
-        motionpicture_rating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['motionPictureRating']['code']
-        movie_duration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['durationMinutes']
-        tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['tomatometer']
-        ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosen_movie]['tomatoRating']['iconImage']['url']
-        cache.set("theater_detail", str(poster_url) + "," + str(title) + "," + str(motionpicture_rating) + "," + str(int(movie_duration)) + "," + str(int(tomatoRating)) + "," + str(ratingImage), ttl_seconds = 240)
+        chosenMovie = random.number(0, movieListSize - 1)
+        print("chosenMovie: ", chosenMovie)
+        posterUrl = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['posterImage']['url']
+        title = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['name']
+        motionPictureRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['motionPictureRating']['code']
+        movieDuration = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['durationMinutes']
+        tomatoRating = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['tomatoRating']['tomatometer']
+        ratingImage = theaterDetailResponse.json()['data']['theaterShowtimeGroupings']['movies'][chosenMovie]['tomatoRating']['iconImage']['url']
+        cache.set("theater_detail", str(posterUrl) + "," + str(title) + "," + str(motionPictureRating) + "," + str(int(movieDuration)) + "," + str(int(tomatoRating)) + "," + str(ratingImage), ttl_seconds = 240)
       
     return render.Root(
         child = render.Stack(
             children = [
-                render_bottom(font, title, theater_name, theater_distance),
+                RenderBottom(font, title, theaterName, theaterDistance),
                 animation.Transformation( 
                      duration = 200,
                      delay = 0,
-                     keyframes = animate_keyframes(),
-                     child = render_top(font, poster_url, title, motionpicture_rating, movie_duration, tomatoRating, ratingImage),
+                     keyframes = AnimateKeyframes(),
+                     child = RenderTop(font, posterUrl, title, motionPictureRating, movieDuration, tomatoRating, ratingImage),
   
-                     ),
-                
+                     ),      
              ]
         ) 
     )
 
-
-def blank_graphic():
+#display blank graphic screen when in failed state
+def BlankGraphic():
     print("default graphic function")
-    chosen_movie = 0
-    poster_url = QUESTION_MARK_URL
+    chosenMovie = 0
+    posterUrl = QUESTION_MARK_URL
     title = "?"
-    motionpicture_rating = "?"
-    movie_duration = 0
+    motionPictureRating = "?"
+    movieDuration = 0
     tomatoRating = 0
-    ratingImage = QUESTION_MARK_URL
-    
+    ratingImage = QUESTION_MARK_URL   
 
-def render_bottom(font_in, title_in, theaterNameRow1, theaterDistanceIn):
+#RenderBottom is the bottom layer of elements, top layer slides off the bottom
+def RenderBottom(font_in, title_in, theaterNameRow1, theaterDistanceIn):
      return render.Column(
          main_align = "space_between",
          #expanded = True,
@@ -144,9 +146,9 @@ def render_bottom(font_in, title_in, theaterNameRow1, theaterDistanceIn):
             ),
         ]
      )
-                
-       
-def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomatorating_in, ratingimage_in):
+        
+#RenderTop is the top layer of elements that will be shown first, then slide off. The poster image will remain after the slide      
+def RenderTop(font_in, posterUrl_in, title_in, mprating_in, duration_in, tomatorating_in, ratingimage_in):
     return render.Row(
             expanded = True,
             main_align = "start",
@@ -157,7 +159,7 @@ def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomat
                     color = "000",
                     pad = (0, 0, 1, 0),
                     child = render.Image(
-                        src = http.get(poster_url_in).body(),
+                        src = http.get(posterUrl_in).body(),
                         width = 24,
                         height = 32,
                         ),          
@@ -212,9 +214,8 @@ def render_top(font_in, poster_url_in, title_in, mprating_in, duration_in, tomat
             ]
         )
 
-
-       
-def animate_keyframes():
+#traverse +40 in x dimension after 55% of frames, and hold to 100% of frames     
+def AnimateKeyframes():
     return [
         animation.Keyframe(
             percentage = 0.0,
@@ -233,9 +234,8 @@ def animate_keyframes():
             transforms = [animation.Translate(x = 40, y = 0)],
         ),
     ]
-       
-       
-def get_schema():
+            
+def GetSchema():
     return schema.Schema(
         version = "1",
         fields = [
@@ -253,4 +253,3 @@ def get_schema():
             ),
         ],
     )
-
